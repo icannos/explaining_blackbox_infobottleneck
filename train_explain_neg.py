@@ -2,7 +2,7 @@ import torch
 import torchvision
 from models.cnn import mnistConv
 from filter import denseExplainer, convExplainer
-from models.explainer import ExplainerMnist
+from models.explainer import ExplainerMnistNegative
 from matplotlib import pyplot as plt
 import torch.nn.functional as F
 
@@ -33,7 +33,7 @@ mnist_data = torchvision.datasets.MNIST('files/', train=False, download=True,
 test_loader = torch.utils.data.DataLoader(mnist_data, batch_size=batch_size, shuffle=True)
 
 model = mnistConv('cuda')
-explainer = ExplainerMnist('cuda')
+explainer = ExplainerMnistNegative('cuda')
 
 model.load_state_dict(torch.load("logdir/mnist/checkpoints/best.pth", map_location=torch.device('cuda'))['model_state_dict'])
 
@@ -42,7 +42,7 @@ optimizer = Adam(params=list(explainer.parameters()))
 for e in range(5):
     for x, y in train_loader:
         x = x.to('cuda')
-        xchap, proba = explainer(x, k=20)
+        xchap, proba_pos, proba_neg = explainer(x, k=20, n=500)
 
 
         output = model(xchap)
@@ -51,7 +51,6 @@ for e in range(5):
 
 
         #loss = F.mse_loss(output, model_output) + 0.01*torch.sum(xchap, dim=1).mean()
-        img_entropy = - torch.sum(xlogx(proba).view(batch_size, -1), dim=1).mean()
 
         loss = F.nll_loss(output, torch.argmax(model_output, dim=1), reduction="mean")
         #loss = F.mse_loss(output, model_output, reduction="mean")
